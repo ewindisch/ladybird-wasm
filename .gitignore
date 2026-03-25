@@ -56,6 +56,9 @@ http-test-server.log
 
 Meta/CMake/vcpkg/user-variables.cmake
 
+# Vendored third-party sources (Skia, etc.) — fetched/built by build scripts
+third_party/
+
 # Ensure that all files in /Base can be tracked, even if they match one of the above rules
 !/Base/**
 
