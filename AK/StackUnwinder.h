@@ -36,6 +36,10 @@ void unwind_stack_from_frame_pointer(FlatPtr frame_pointer, CallableAs<Optional<
     static constexpr ptrdiff_t FRAME_POINTER_RETURN_ADDRESS_OFFSET = -8;
     static constexpr ptrdiff_t FRAME_POINTER_PREVIOUS_FRAME_POINTER_OFFSET = -16;
 #else
+    // Unsupported arch — provide dummy constants so the code compiles;
+    // the early return ensures they are never actually used at runtime.
+    static constexpr ptrdiff_t FRAME_POINTER_RETURN_ADDRESS_OFFSET = 0;
+    static constexpr ptrdiff_t FRAME_POINTER_PREVIOUS_FRAME_POINTER_OFFSET = 0;
     return;
 #endif
 

@@ -148,6 +148,16 @@ struct NumericLimits<long double> {
 
 template<>
 struct NumericLimits<f16> {
+#ifdef __EMSCRIPTEN__
+    // __fp16 IEEE 754 binary16: 1 sign, 5 exponent, 10 mantissa bits.
+    static constexpr f16 lowest() { return (f16)-65504.0f; }
+    static constexpr f16 min_normal() { return (f16)6.103515625e-5f; }
+    static constexpr f16 min_denormal() { return (f16)5.9604644775390625e-8f; }
+    static constexpr f16 max() { return (f16)65504.0f; }
+    static constexpr f16 epsilon() { return (f16)9.765625e-4f; }
+    static constexpr bool is_signed() { return true; }
+    static constexpr size_t digits() { return 11; }
+#else
     static constexpr f16 lowest() { return -__FLT16_MAX__; }
     static constexpr f16 min_normal() { return __FLT16_MIN__; }
     static constexpr f16 min_denormal() { return __FLT16_DENORM_MIN__; }
@@ -155,6 +165,7 @@ struct NumericLimits<f16> {
     static constexpr f16 epsilon() { return __FLT16_EPSILON__; }
     static constexpr bool is_signed() { return true; }
     static constexpr size_t digits() { return __FLT16_MANT_DIG__; }
+#endif
 };
 
 }

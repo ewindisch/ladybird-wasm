@@ -138,6 +138,10 @@
 #    define AK_OS_WINDOWS
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#    define AK_OS_EMSCRIPTEN
+#endif
+
 #if defined(__ANDROID__)
 #    define STR(x) __STR(x)
 #    define __STR(x) #x
