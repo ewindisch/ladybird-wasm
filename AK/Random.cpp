@@ -15,6 +15,10 @@
 #    include <sys/random.h>
 #endif
 
+#if defined(AK_OS_EMSCRIPTEN)
+#    include <unistd.h>
+#endif
+
 #if defined(AK_OS_WINDOWS)
 #    include <AK/Windows.h>
 #endif
@@ -23,7 +27,17 @@ static inline ErrorOr<void> csprng(void* const buf, size_t size)
 {
     // We shouldn't use OpenSSL's RAND_bytes function here, because we want to avoid adding dependencies to AK.
     // Therefore, we will use the best platform-specific CSPRNG.
-#if defined(AK_OS_SERENITY) || defined(AK_OS_ANDROID) || defined(AK_OS_BSD_GENERIC) || defined(AK_OS_HAIKU) || AK_LIBC_GLIBC_PREREQ(2, 36)
+#if defined(AK_OS_EMSCRIPTEN)
+    // Emscripten provides getentropy() backed by crypto.getRandomValues() in JS.
+    unsigned char* p = static_cast<unsigned char*>(buf);
+    while (size > 0u) {
+        size_t chunk = size > 256u ? 256u : size; // getentropy max is 256 bytes
+        if (getentropy(p, chunk) != 0)
+            return Error::from_errno(errno);
+        p += chunk;
+        size -= chunk;
+    }
+#elif defined(AK_OS_SERENITY) || defined(AK_OS_ANDROID) || defined(AK_OS_BSD_GENERIC) || defined(AK_OS_HAIKU) || AK_LIBC_GLIBC_PREREQ(2, 36)
     // This target also covers MacOS and iOS and they both seem to support arc4random_buf
     arc4random_buf(buf, size);
 #elif defined(AK_OS_LINUX)

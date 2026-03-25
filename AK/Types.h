@@ -17,8 +17,25 @@ using i32 = __INT32_TYPE__;
 using i16 = __INT16_TYPE__;
 using i8 = __INT8_TYPE__;
 
+#ifdef __EMSCRIPTEN__
+// Emscripten/wasm32 clang does not support _Float16 as a first-class type
+// (cannot be used as function parameter/return type).  Wrap __fp16 in a
+// trivially-copyable struct with the same IEEE 754 binary16 representation.
+struct f16 {
+    __fp16 v;
+    constexpr f16() : v(0) {}
+    constexpr f16(int i) : v((__fp16)(float)i) {}
+    constexpr f16(float f) : v((__fp16)f) {}
+    constexpr f16(double d) : v((__fp16)(float)d) {}
+    constexpr explicit operator float() const { return (float)v; }
+    constexpr explicit operator double() const { return (double)(float)v; }
+    constexpr f16 operator-() const { return f16(-(float)v); }
+};
+static_assert(sizeof(f16) == 2);
+#else
 using f16 = _Float16;
 static_assert(__FLT16_MANT_DIG__ == 11 && __FLT16_MAX_EXP__ == 16);
+#endif
 
 using f32 = float;
 static_assert(__FLT_MANT_DIG__ == 24 && __FLT_MAX_EXP__ == 128);
