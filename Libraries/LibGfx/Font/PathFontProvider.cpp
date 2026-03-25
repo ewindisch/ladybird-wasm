@@ -41,6 +41,17 @@ static u32 number_of_fonts_in_ttc(ReadonlyBytes bytes)
     return num_fonts;
 }
 
+void PathFontProvider::load_font_from_bytes(ByteBuffer bytes)
+{
+    // try_load_from_temporary_memory copies the bytes into an AnonymousBuffer-backed
+    // Typeface — safe even after the ByteBuffer parameter is destroyed.
+    if (auto font_or_error = Typeface::try_load_from_temporary_memory(bytes); !font_or_error.is_error()) {
+        auto font = font_or_error.release_value();
+        auto& family = m_typeface_by_family.ensure(font->family(), [] { return Vector<NonnullRefPtr<Typeface>> {}; });
+        family.append(move(font));
+    }
+}
+
 void PathFontProvider::load_all_fonts_from_uri(StringView uri)
 {
     for_each_typeface_in_uri(uri, m_loaded_paths, [this](String const&, u32, FontFileFormat, NonnullRefPtr<Typeface> font) {

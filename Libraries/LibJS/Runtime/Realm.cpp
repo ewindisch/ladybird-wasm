@@ -8,7 +8,6 @@
 #include <LibJS/Runtime/ExecutionContext.h>
 #include <LibJS/Runtime/Realm.h>
 #include <LibJS/Runtime/VM.h>
-
 namespace JS {
 
 using namespace EmbeddingABI;

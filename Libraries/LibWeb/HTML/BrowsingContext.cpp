@@ -6,6 +6,9 @@
 
 #include <LibGC/Heap.h>
 #include <LibWeb/Bindings/MainThreadVM.h>
+#ifdef AK_OS_EMSCRIPTEN
+#    include <emscripten.h>
+#endif
 #include <LibWeb/Bindings/PrincipalHostDefined.h>
 #include <LibWeb/Bindings/Wrappable.h>
 #include <LibWeb/DOM/Document.h>
@@ -159,6 +162,9 @@ BrowsingContext::BrowsingContextAndDocument BrowsingContext::create_a_new_browsi
     auto top_level_origin = !embedder ? origin : relevant_settings_object(*embedder).top_level_origin.value();
 
     // 13. Set up a window environment settings object with about:blank, realm execution context, null, topLevelCreationURL, and topLevelOrigin.
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: before WindowEnvironmentSettingsObject::setup");
+#endif
     WindowEnvironmentSettingsObject::setup(
         page,
         URL::about_blank(),

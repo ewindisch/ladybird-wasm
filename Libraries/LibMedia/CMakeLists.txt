@@ -102,14 +102,19 @@ if (WIN32)
     target_link_libraries(LibMedia PRIVATE mfplat mfuuid)
 endif()
 
-target_sources(LibMedia PRIVATE
-        FFmpeg/FFmpegAudioConverter.cpp
-        FFmpeg/FFmpegAudioDecoder.cpp
-        FFmpeg/FFmpegChannelLayout.cpp
-)
-
-if (NOT ANDROID)
-    target_link_libraries(LibMedia PRIVATE PkgConfig::AVCODEC PkgConfig::AVUTIL PkgConfig::LIBSWRESAMPLE)
+if (EMSCRIPTEN)
+    # No FFmpeg for WASM; provide stubs for the FFmpeg C++ class methods.
+    target_sources(LibMedia PRIVATE StubsEmscripten.cpp)
+else()
+    target_sources(LibMedia PRIVATE
+            FFmpeg/FFmpegAudioConverter.cpp
+            FFmpeg/FFmpegAudioDecoder.cpp
+            FFmpeg/FFmpegChannelLayout.cpp
+    )
+    if (NOT ANDROID)
+        target_link_libraries(LibMedia PRIVATE PkgConfig::AVCODEC PkgConfig::AVUTIL PkgConfig::LIBSWRESAMPLE)
+    endif()
+endif()
 else()
     target_include_directories(LibMedia PRIVATE ${FFMPEG_INCLUDE_DIRS})
     target_link_directories(LibMedia PRIVATE ${FFMPEG_LIBRARY_DIRS})

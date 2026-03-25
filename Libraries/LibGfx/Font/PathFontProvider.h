@@ -29,6 +29,9 @@ public:
     void load_all_fonts_from_uri(StringView);
     static void for_each_typeface_in_uri(StringView, HashTable<String>& loaded_paths, Function<void(String const& path, u32 ttc_index, FontFileFormat, NonnullRefPtr<Typeface>)>);
 
+    // Load a font directly from raw bytes (bypasses MappedFile/mmap — useful for WASM/Emscripten).
+    void load_font_from_bytes(ByteBuffer);
+
     virtual RefPtr<Gfx::Font> get_font(FlyString const& family, float point_size, unsigned weight, unsigned width, unsigned slope, Optional<FontVariationSettings> const& font_variation_settings = {}, Optional<Gfx::ShapeFeatures> const& shape_features = {}) override;
     virtual void for_each_typeface_with_family_name(FlyString const& family_name, Function<void(Typeface const&)>) override;
 

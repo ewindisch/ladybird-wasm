@@ -149,7 +149,21 @@ GC::Ref<LocalTraversableNavigable> LocalTraversableNavigable::create_a_fresh_top
     auto completion_token = HTML::HTMLParser::parserless_completion_token(document);
     Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(traversable->heap(), [document, completion_token] {
         // FIXME: We do this other places too when creating a new about:blank document. Perhaps it's worth a spec issue?
+#ifdef AK_OS_EMSCRIPTEN
+        // AD-HOC (WASM): ensure <html><head><body> exists and mark the document complete
+        // directly instead of running HTMLParser::the_end(). Without a body element,
+        // Document::is_render_blocked() stays true for 30 s and no paint ever reaches the
+        // WASM canvas. The parserless the_end() path still runs spin_until() loops whose
+        // emscripten_sleep() re-entries saturate the browser task queue inside the
+        // ASYNCIFY scope; for an about:blank document with no scripts or render-blocking
+        // resources, marking Complete directly is equivalent and safe.
+        if (!document->body())
+            MUST(document->populate_with_html_head_and_body());
+        document->update_readiness(HTML::DocumentReadyState::Complete);
+        (void)completion_token;
+#else
         HTML::HTMLParser::the_end(document, completion_token);
+#endif
     }));
 
     // 2. Navigate traversable to initialNavigationURL using traversable's active document, with documentResource set to initialNavigationPostResource.

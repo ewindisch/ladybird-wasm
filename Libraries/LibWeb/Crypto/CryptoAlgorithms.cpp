@@ -3382,6 +3382,14 @@ WebIDL::ExceptionOr<ByteBuffer> AesGcm::encrypt(JS::Realm& realm, AlgorithmParam
 {
     auto const& normalized_algorithm = static_cast<AesGcmParams const&>(params);
 
+    // WASM note: on 32-bit targets (wasm32) size_t can never exceed 2^39-256, so the
+    // plaintext length check at step 4 below is a no-op there. This early check is
+    // compiled only on 64-bit targets, where it is equivalent.
+#if UINTPTR_MAX > 0xFFFFFFFFU
+    if (plaintext.size() > (1ULL << 39) - 256)
+        return WebIDL::OperationError::create(m_realm, "Invalid plaintext length"_utf16);
+#endif
+
     // 1. If the iv member of normalizedAlgorithm has a length greater than 2^64 - 1 bytes, then throw an OperationError.
     // NOTE: This is not possible
 

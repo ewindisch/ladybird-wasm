@@ -166,7 +166,9 @@ constexpr KeyCode key_code_from_string(Utf16View key_name)
     ENUMERATE_KEY_CODES
 #undef __ENUMERATE_KEY_CODE
 
-    VERIFY_NOT_REACHED();
+    // Unknown key string (e.g. DOM key names not in the enum) — return Invalid
+    // instead of crashing so unrecognised input is silently ignored.
+    return KeyCode::Key_Invalid;
 }
 
 enum KeyModifier {

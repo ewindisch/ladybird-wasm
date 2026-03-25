@@ -124,7 +124,8 @@ ErrorOr<Vector<String>> FontDatabase::font_directories()
     return paths_vector;
 
 #else
-#    if defined(AK_OS_SERENITY)
+#    if defined(AK_OS_SERENITY) || defined(AK_OS_EMSCRIPTEN)
+    // Serenity and the Emscripten/WASM port both serve fonts from the preloaded /res bundle.
     return Vector<String> { {
         "/res/fonts"_string,
     } };

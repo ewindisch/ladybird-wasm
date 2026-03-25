@@ -7,6 +7,45 @@
 
 #include <AK/AllOf.h>
 #include <AK/Debug.h>
+// __EMSCRIPTEN__ is predefined by emcc before any headers — use it here so that
+// AK_OS_EMSCRIPTEN (defined later via AK/Platform.h) doesn't cause the block to be skipped.
+#ifdef __EMSCRIPTEN__
+#    include <AK/StringBuilder.h>
+#    include <string.h>   // strlen()
+#    include <emscripten.h>
+#    include <emscripten/em_js.h>
+
+// ── WASM HTTP bridge — inline JS definitions (tor-bridge.js sets up $LadybirdHTTP) ──
+// EM_ASYNC_JS: ladybird_http_request suspends WASM via Asyncify while the Tor
+// HTTP exchange runs.  Must be listed in ASYNCIFY_IMPORTS in CMakeLists.txt.
+EM_ASYNC_JS(int, ladybird_http_request, (char const* url, char const* method, char const* req_headers, uint8_t const* body_ptr, size_t body_len), {
+    var urlStr    = UTF8ToString(url);
+    var methodStr = UTF8ToString(method);
+    var hdrsStr   = req_headers ? UTF8ToString(req_headers) : "";
+    var reqHeaderPairs = [];
+    if (hdrsStr) {
+        hdrsStr.split("\r\n").forEach(function(line) {
+            var ci = line.indexOf(":");
+            if (ci >= 0)
+                reqHeaderPairs.push([line.slice(0, ci).trim(), line.slice(ci + 1).trim()]);
+        });
+    }
+    var bodyBytes = (body_ptr && body_len > 0)
+        ? (new Uint8Array(wasmMemory.buffer)).slice(body_ptr, body_ptr + body_len)
+        : null;
+    return LadybirdHTTP.fetch(urlStr, methodStr, reqHeaderPairs, bodyBytes);
+});
+
+// Synchronous result accessors — call after ladybird_http_request() returns.
+EM_JS(int, ladybird_http_get_status, (), { return LadybirdHTTP.status; });
+EM_JS(char const*, ladybird_http_get_headers, (), { return LadybirdHTTP.headersPtr; });
+EM_JS(uint8_t const*, ladybird_http_get_body, (), { return LadybirdHTTP.bodyPtr; });
+EM_JS(size_t, ladybird_http_get_body_len, (), { return LadybirdHTTP.bodyLen; });
+EM_JS(void, ladybird_http_free_result, (), { LadybirdHTTP._reset(); });
+// Pull $LadybirdHTTP and $LadybirdTor into the output — EM_ASYNC_JS embeds JS
+// as an opaque string so the linker can't see the references automatically.
+EM_JS_DEPS(ladybird_tor_http, "$LadybirdHTTP,$LadybirdTor");
+#endif
 #include <LibCore/Directory.h>
 #include <LibCore/MimeData.h>
 #include <LibCore/Resource.h>
@@ -526,6 +565,78 @@ RefPtr<Fetch::Engine::NetworkTransportHandle> ResourceLoader::load(LoadRequest& 
 
         return nullptr;
     }
+
+#ifdef AK_OS_EMSCRIPTEN
+    // WASM builds have no IPC RequestServer.  Perform HTTP/1.1 over a Tor TCP
+    // socket directly from JS (ladybird_http_request in tor-bridge.js).
+    // HTTPS (TLS) is not yet supported and returns a failure response.
+    if (url.scheme().is_one_of("http"sv, "https"sv)) {
+        // Serialize request headers as "Name: Value\r\n" lines.
+        StringBuilder hdr_builder;
+        for (auto const& hdr : request.headers().headers()) {
+            hdr_builder.append(hdr.name);
+            hdr_builder.append(": "sv);
+            hdr_builder.append(hdr.value);
+            hdr_builder.append("\r\n"sv);
+        }
+        auto hdr_bstr = MUST(hdr_builder.to_string()).to_byte_string();
+
+        auto url_str  = url.serialize().to_byte_string();
+        auto meth_str = request.method();
+
+        auto const& body_bytes = request.body();
+
+        int ret = ladybird_http_request(
+            url_str.characters(),
+            meth_str.characters(),
+            hdr_bstr.is_empty() ? nullptr : hdr_bstr.characters(),
+            body_bytes.data(),
+            body_bytes.size());
+
+        if (ret < 0 || ladybird_http_get_status() <= 0) {
+            ladybird_http_free_result();
+            log_failure(request, "WASM HTTP request failed"sv);
+            Requests::RequestTimingInfo timing {};
+            on_complete->function()(false, timing, "WASM HTTP request failed"sv);
+            return nullptr;
+        }
+
+        auto status_code = static_cast<u32>(ladybird_http_get_status());
+
+        // Parse "Name: Value\r\n..." header string into an HTTP::HeaderList.
+        Vector<HTTP::Header> header_vec;
+        if (auto const* hdr_ptr = ladybird_http_get_headers()) {
+            StringView hdr_view { hdr_ptr, strlen(hdr_ptr) };
+            hdr_view.for_each_split_view("\r\n"sv, SplitBehavior::Nothing, [&](StringView line) {
+                auto colon = line.find(':');
+                if (!colon.has_value())
+                    return;
+                auto name  = line.substring_view(0, *colon).trim_whitespace();
+                auto value = line.substring_view(*colon + 1).trim_whitespace();
+                header_vec.append({ ByteString { name }, ByteString { value } });
+            });
+        }
+        auto response_headers = HTTP::HeaderList::create(move(header_vec));
+
+        // Body bytes (may be empty for e.g. 204 No Content).
+        ReadonlyBytes body_data {};
+        auto const* body_ptr = ladybird_http_get_body();
+        auto body_len = ladybird_http_get_body_len();
+        if (body_ptr && body_len > 0)
+            body_data = { body_ptr, body_len };
+
+        // Fire callbacks then release the JS-malloc'd buffers.
+        Requests::RequestTimingInfo timing {};
+        log_success(request);
+        on_headers_received->function()(nullptr, *response_headers, status_code, {}, {}, {}, Requests::CacheState {});
+        on_data_received->function()(Requests::ResponseData::from_bytes(body_data));
+        on_complete->function()(true, timing, {});
+
+        ladybird_http_free_result();
+
+        return nullptr;
+    }
+#endif
 
     if (!url.scheme().is_one_of("http"sv, "https"sv)) {
         auto not_implemented_error = ByteString::formatted("Protocol not implemented: {}", url.scheme());

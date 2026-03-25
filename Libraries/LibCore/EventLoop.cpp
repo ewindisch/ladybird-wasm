@@ -16,6 +16,10 @@
 #include <LibCore/Promise.h>
 #include <LibCore/ThreadEventQueue.h>
 
+#ifdef AK_OS_EMSCRIPTEN
+#    include <emscripten.h>
+#endif
+
 namespace Core {
 
 namespace {
@@ -86,8 +90,9 @@ int EventLoop::exec()
 void EventLoop::spin_until(Function<bool()> goal_condition)
 {
     VERIFY(current_event_loop() == this);
-    while (!goal_condition())
+    while (!goal_condition()) {
         pump();
+    }
 }
 
 size_t EventLoop::pump(WaitMode mode)

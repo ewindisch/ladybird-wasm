@@ -27,6 +27,10 @@ namespace Web {
 #    define CPU_STRING "PowerPC 64"
 #elif ARCH(PPC)
 #    define CPU_STRING "PowerPC"
+#elif defined(__wasm32__) || defined(__EMSCRIPTEN__)
+#    define CPU_STRING "wasm32"
+#elif defined(__wasm64__)
+#    define CPU_STRING "wasm64"
 #else
 #    error Unknown architecture
 #endif
@@ -57,6 +61,8 @@ namespace Web {
 #    define OS_STRING "Haiku"
 #elif defined(AK_OS_GNU_HURD)
 #    define OS_STRING "GNU/Hurd"
+#elif defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
+#    define OS_STRING "Linux"
 #else
 #    error Unknown OS
 #endif
@@ -81,11 +87,19 @@ namespace Web {
 #    define UA_PLATFORM_STRING "Linux; Android 10; K"
 #elif defined(AK_OS_WINDOWS)
 #    define UA_PLATFORM_STRING "Windows NT 10.0; Win64; x64"
+#elif defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
+// Match Tor Browser's frozen UA to avoid fingerprinting. Tor Browser 14.x
+// reports Firefox ESR 128 on a normalized Windows platform.
+#    define UA_PLATFORM_STRING "Windows NT 10.0; Win64; x64"
 #else
 #    define UA_PLATFORM_STRING "X11; Linux x86_64"
 #endif
 
+#if defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
+constexpr auto default_user_agent = "Mozilla/5.0 (Windows NT 10.0; rv:128.0) Gecko/20100101 Firefox/128.0"sv;
+#else
 constexpr auto default_user_agent = "Mozilla/5.0 (" UA_PLATFORM_STRING ") " BROWSER_NAME "/" BROWSER_VERSION " " SAD_COMPATIBILITY_HACK ""sv;
+#endif
 // https://html.spec.whatwg.org/multipage/system-state.html#dom-navigator-platform
 // "Must return either the empty string or a string representing the platform on which the browser is executing, e.g.
 // "MacIntel", "Win32", "Linux x86_64", "Linux armv81"."
@@ -96,6 +110,8 @@ constexpr auto default_user_agent = "Mozilla/5.0 (" UA_PLATFORM_STRING ") " BROW
 #elif defined(AK_OS_IOS)
 #    define NAVIGATOR_PLATFORM_STRING "iPhone"
 #elif defined(AK_OS_WINDOWS)
+#    define NAVIGATOR_PLATFORM_STRING "Win32"
+#elif defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
 #    define NAVIGATOR_PLATFORM_STRING "Win32"
 #else
 #    if defined(AK_OS_ANDROID) || defined(AK_OS_LINUX)

@@ -208,7 +208,10 @@ private:
     };
 };
 
+// On wasm32 PropertyKey is 8 bytes (due to u64 member) while uintptr_t is 4.
+#ifndef __EMSCRIPTEN__
 static_assert(sizeof(PropertyKey) == sizeof(uintptr_t));
+#endif
 
 }
 

@@ -4,20 +4,75 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <AK/Platform.h>
 #include <AK/Try.h>
 #include <LibCore/AnonymousBuffer.h>
 #include <LibCore/System.h>
 #include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#ifndef AK_OS_EMSCRIPTEN
+#    include <sys/mman.h>
+#    include <unistd.h>
 
-#if defined(AK_OS_MACOS)
-#    include <mach/mach.h>
-#    include <mach/mach_vm.h>
+#    if defined(AK_OS_MACOS)
+#        include <mach/mach.h>
+#        include <mach/mach_vm.h>
+#    endif
 #endif
 
 namespace Core {
 
+#ifdef AK_OS_EMSCRIPTEN
+// On Emscripten there is no OS shared memory. Use malloc-backed buffers.
+// The fd field is set to -1 to signal malloc ownership in the destructor.
+ErrorOr<AnonymousBuffer> AnonymousBuffer::create_with_size(size_t size)
+{
+    auto impl = TRY(AnonymousBufferImpl::create(size));
+    return AnonymousBuffer(move(impl));
+}
+
+ErrorOr<NonnullRefPtr<AnonymousBufferImpl>> AnonymousBufferImpl::create(size_t size)
+{
+    void* data = calloc(1, size);
+    if (!data && size != 0)
+        return Error::from_errno(ENOMEM);
+    return AK::adopt_nonnull_ref_or_enomem(new (nothrow) AnonymousBufferImpl(-1, size, data));
+}
+
+ErrorOr<NonnullRefPtr<AnonymousBufferImpl>> AnonymousBufferImpl::create(int, size_t size)
+{
+    // No OS shared memory on Emscripten; the fd is ignored and -1 marks malloc ownership.
+    return create(size);
+}
+
+AnonymousBufferImpl::~AnonymousBufferImpl()
+{
+    if (m_fd == -1)
+        free(m_data);
+}
+
+ErrorOr<AnonymousBuffer> AnonymousBuffer::snapshot(size_t offset, size_t size) const
+{
+    if (!is_valid())
+        return Error::from_string_literal("Cannot snapshot an invalid anonymous buffer");
+    if (offset > this->size() || size > this->size() - offset)
+        return Error::from_string_literal("Anonymous buffer snapshot range is out of bounds");
+
+    auto copy = TRY(create_with_size(size));
+    if (size == 0)
+        return copy;
+    bytes().slice(offset, size).copy_to({ copy.data<u8>(), copy.size() });
+    return copy;
+}
+
+ErrorOr<void> AnonymousBuffer::validate_backing_size() const
+{
+    return {};
+}
+
+void AnonymousBuffer::populate_for_reading() const
+{
+}
+#else
 ErrorOr<AnonymousBuffer> AnonymousBuffer::create_with_size(size_t size)
 {
     auto fd = TRY(Core::System::anon_create(size, O_CLOEXEC, Core::System::AllowSealing::Yes));
@@ -165,6 +220,7 @@ AnonymousBufferImpl::~AnonymousBufferImpl()
         VERIFY(rc == 0);
     }
 }
+#endif
 
 AnonymousBufferImpl::AnonymousBufferImpl(int fd, size_t size, void* data)
     : m_fd(fd)
