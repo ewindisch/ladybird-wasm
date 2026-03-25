@@ -41,6 +41,7 @@
     "fast-float",
     {
       "name": "ffmpeg",
+      "platform": "!emscripten",
       "default-features": false,
       "features": [
         "avcodec",
@@ -74,6 +75,10 @@
         "icu"
       ]
     },
+    {
+      "name": "harfbuzz",
+      "platform": "emscripten"
+    },
     "icu",
     {
       "name": "libavif",
@@ -94,7 +99,7 @@
     },
     {
       "name": "libproxy",
-      "platform": "!(android | bsd)"
+      "platform": "!(android | bsd | emscripten)"
     },
     "libpsl",
     {
@@ -201,6 +206,7 @@
     },
     {
       "name": "sdl3",
+      "platform": "!emscripten",
       "default-features": false
     },
     "simdjson",

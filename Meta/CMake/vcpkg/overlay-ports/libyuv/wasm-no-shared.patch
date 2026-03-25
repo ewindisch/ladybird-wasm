@@ -1,0 +1,13 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -181,6 +181,10 @@
+ add_library( ${ly_lib_shared} SHARED ${ly_lib_parts})
+ set_target_properties( ${ly_lib_shared} PROPERTIES OUTPUT_NAME "${ly_lib_name}" )
+ set_target_properties( ${ly_lib_shared} PROPERTIES PREFIX "lib" )
++if(EMSCRIPTEN)
++  # Emscripten has no .so; rename shared stub to avoid collision with the static lib output.
++  set_target_properties( ${ly_lib_shared} PROPERTIES OUTPUT_NAME "${ly_lib_name}_shared_stub" )
++endif()
+ if(WIN32)
+   set_target_properties( ${ly_lib_shared} PROPERTIES IMPORT_PREFIX "lib" )
+ endif()

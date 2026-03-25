@@ -1,8 +1,14 @@
 set_property(GLOBAL PROPERTY JOB_POOLS "${JOB_POOLS};cargo=1")
 
 # Detect the Rust toolchain.
-find_program(RUST_CARGO cargo REQUIRED)
-find_program(RUST_RUSTC rustc REQUIRED)
+# Prefer the user's cargo/rustc from ~/.cargo/bin over any system-installed
+# version, since the project requires a recent edition (2024) of Rust.
+find_program(RUST_CARGO cargo
+    HINTS "$ENV{HOME}/.cargo/bin" "$ENV{CARGO_HOME}/bin"
+    REQUIRED)
+find_program(RUST_RUSTC rustc
+    HINTS "$ENV{HOME}/.cargo/bin" "$ENV{CARGO_HOME}/bin"
+    REQUIRED)
 
 if (NOT DEFINED RUSTC_WRAPPER)
     set(RUSTC_WRAPPER "$ENV{RUSTC_WRAPPER}" CACHE FILEPATH "Path to a rustc wrapper program, e.g. sccache")
@@ -15,10 +21,15 @@ if (NOT RUSTC_WRAPPER)
 endif()
 
 if (NOT DEFINED CACHE{RUST_TARGET_TRIPLE})
-    execute_process(COMMAND "${RUST_RUSTC}" -vV OUTPUT_VARIABLE rustc_verbose)
-    string(REGEX MATCH "host: ([^\n]+)" _ "${rustc_verbose}")
-    string(STRIP "${CMAKE_MATCH_1}" host_triple)
-    set(RUST_TARGET_TRIPLE "${host_triple}" CACHE INTERNAL "Rust target triple")
+    if (EMSCRIPTEN)
+        # Rust compiles to wasm32-unknown-unknown which can be linked by wasm-ld.
+        set(RUST_TARGET_TRIPLE "wasm32-unknown-unknown" CACHE INTERNAL "Rust target triple")
+    else()
+        execute_process(COMMAND "${RUST_RUSTC}" -vV OUTPUT_VARIABLE rustc_verbose)
+        string(REGEX MATCH "host: ([^\n]+)" _ "${rustc_verbose}")
+        string(STRIP "${CMAKE_MATCH_1}" host_triple)
+        set(RUST_TARGET_TRIPLE "${host_triple}" CACHE INTERNAL "Rust target triple")
+    endif()
 endif()
 
 # Compiler flags shared by Rust libraries, binaries, and tests.
@@ -382,8 +393,6 @@ function(_rust_crate_common_setup)
 
     # Build environment variables for cargo.
     set(cargo_env
-        "CC_${target_underscore}=${CMAKE_C_COMPILER}"
-        "CXX_${target_underscore}=${CMAKE_CXX_COMPILER}"
         "CARGO_BUILD_RUSTC=${RUST_RUSTC}"
     )
 
@@ -410,10 +419,20 @@ function(_rust_crate_common_setup)
         list(APPEND cargo_env "FFI_OUTPUT_DIR=${ARG_FFI_OUTPUT_DIR}")
     endif()
 
-    # On Windows, rustc invokes the linker directly with MSVC-style flags, so we must not override it with a
-    # compiler driver like clang-cl.
-    if (NOT WIN32)
+    if (EMSCRIPTEN)
+        # For wasm32-unknown-unknown Rust builds, don't override CC/CXX/linker
+        # with emcc — rustc handles wasm linking itself via wasm-ld.
+    elseif (WIN32)
+        # On Windows, rustc invokes the linker directly with MSVC-style flags, so we must not override it with a
+        # compiler driver like clang-cl.
         list(APPEND cargo_env
+            "CC_${target_underscore}=${CMAKE_C_COMPILER}"
+            "CXX_${target_underscore}=${CMAKE_CXX_COMPILER}"
+        )
+    else()
+        list(APPEND cargo_env
+            "CC_${target_underscore}=${CMAKE_C_COMPILER}"
+            "CXX_${target_underscore}=${CMAKE_CXX_COMPILER}"
             "CARGO_TARGET_${target_upper}_LINKER=${CMAKE_C_COMPILER}"
             "AR_${target_underscore}=${CMAKE_AR}"
         )

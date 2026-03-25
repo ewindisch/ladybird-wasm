@@ -95,7 +95,10 @@ function(create_ladybird_bundle target_name)
     copy_resources_to_build(${resource_base_dir} ${target_name})
 endfunction()
 
-if (ANDROID OR VCPKG_TARGET_ANDROID)
+# Select UI Framework
+if (EMSCRIPTEN)
+    add_subdirectory(Wasm)
+elseif (ANDROID OR VCPKG_TARGET_ANDROID)
     add_subdirectory("Android")
 else()
     add_subdirectory("Qt")
@@ -103,6 +106,13 @@ endif()
 
 if (NOT TARGET ladybird)
     message(FATAL_ERROR "UI Framework selection must declare a ladybird target")
+endif()
+
+if(EMSCRIPTEN)
+    # For WASM the real target is ladybird-wasm; ladybird is an ALIAS and cannot
+    # be used with target_*() commands.  All linking / include dirs are set in
+    # UI/Wasm/CMakeLists.txt, so skip the generic setup below.
+    return()
 endif()
 
 if (TARGET ladybird_impl)
