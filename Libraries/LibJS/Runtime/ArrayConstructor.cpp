@@ -20,7 +20,6 @@
 #include <LibJS/Runtime/PromiseConstructor.h>
 #include <LibJS/Runtime/Shape.h>
 #include <LibJS/Runtime/ValueInlines.h>
-
 namespace JS {
 
 GC_DEFINE_ALLOCATOR(ArrayConstructor);
@@ -40,7 +39,13 @@ void ArrayConstructor::initialize(Realm& realm)
 
     u8 attr = Attribute::Writable | Attribute::Configurable;
     define_native_function(realm, vm.names.from, from, 1, attr);
+#ifndef AK_OS_EMSCRIPTEN
+    // Array.fromAsync requires compiling a JS builtin via the Rust parser.
+    // In the WASM build the compilation is prohibitively slow (~10 min),
+    // so we omit the property.  Array.fromAsync is not needed for basic
+    // rendering or the four WASM runtime integration tests.
     define_native_javascript_backed_function(vm.names.fromAsync, realm.intrinsics().from_async_array_constructor_function(), 1, attr);
+#endif
     define_native_function(realm, vm.names.isArray, is_array, 1, attr);
     define_native_function(realm, vm.names.of, of, 0, attr);
 

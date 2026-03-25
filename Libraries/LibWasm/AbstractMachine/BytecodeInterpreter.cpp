@@ -28,7 +28,7 @@
 
 using namespace AK::SIMD;
 
-#ifdef AK_COMPILER_CLANG
+#if defined(AK_COMPILER_CLANG) && !defined(__EMSCRIPTEN__)
 #    define TAILCALL [[clang::musttail]]
 #    define HAS_TAILCALL
 #elif defined(AK_COMPILER_GCC)

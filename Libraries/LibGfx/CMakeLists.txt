@@ -110,7 +110,14 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(LIBAVIF REQUIRED)
 find_package(WebP REQUIRED)
-find_package(harfbuzz REQUIRED)
+if(EMSCRIPTEN)
+    # harfbuzz is built via vcpkg for the WASM build. Use the installed package.
+    find_package(harfbuzz CONFIG REQUIRED)
+    # Create unnamespaced alias so target_link_libraries below works for both paths.
+    add_library(harfbuzz ALIAS harfbuzz::harfbuzz)
+else()
+    find_package(harfbuzz REQUIRED)
+endif()
 
 target_link_libraries(LibGfx PRIVATE PkgConfig::WOFF2 JPEG::JPEG PNG::PNG avif WebP::webp WebP::webpdecoder
             WebP::webpdemux WebP::libwebpmux skia harfbuzz)

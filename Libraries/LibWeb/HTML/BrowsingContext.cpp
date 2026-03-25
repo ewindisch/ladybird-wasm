@@ -5,6 +5,9 @@
  */
 
 #include <LibWeb/Bindings/MainThreadVM.h>
+#ifdef AK_OS_EMSCRIPTEN
+#    include <emscripten.h>
+#endif
 #include <LibWeb/Bindings/PrincipalHostDefined.h>
 #include <LibWeb/DOM/Document.h>
 #include <LibWeb/DOM/ElementFactory.h>
@@ -130,6 +133,9 @@ static void populate_with_html_head_body(GC::Ref<DOM::Document> document)
 WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext::create_a_new_browsing_context_and_document(GC::Ref<Page> page, GC::Ptr<DOM::Document> creator, GC::Ptr<DOM::Element> embedder, GC::Ref<BrowsingContextGroup> group)
 {
     auto& vm = group->vm();
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: start");
+#endif
 
     // 1. Let browsingContext be a new browsing context.
     GC::Ref<BrowsingContext> browsing_context = *vm.heap().allocate<BrowsingContext>(page);
@@ -169,6 +175,9 @@ WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext
     GC::Ptr<Window> window;
 
     // 10. Let realm execution context be the result of creating a new JavaScript realm given agent and the following customizations:
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: before create_a_new_javascript_realm");
+#endif
     auto realm_execution_context = Bindings::create_a_new_javascript_realm(
         Bindings::main_thread_vm(),
         [&](JS::Realm& realm) -> JS::Object* {
@@ -191,6 +200,9 @@ WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext
     auto top_level_origin = !embedder ? origin : relevant_settings_object(*embedder).origin();
 
     // 13. Set up a window environment settings object with about:blank, realm execution context, null, topLevelCreationURL, and topLevelOrigin.
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: before WindowEnvironmentSettingsObject::setup");
+#endif
     WindowEnvironmentSettingsObject::setup(
         page,
         URL::about_blank(),
@@ -198,6 +210,9 @@ WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext
         {},
         top_level_creation_url,
         top_level_origin);
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: after WindowEnvironmentSettingsObject::setup");
+#endif
 
     // 14. Let loadTimingInfo be a new document load timing info with its navigation start time set to the result of calling
     //     coarsen time with unsafeContextCreationTime and the new environment settings object's cross-origin isolated capability.
@@ -271,6 +286,9 @@ WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext
     document->set_ready_for_post_load_tasks(true);
 
     // 19. Populate with html/head/body given document.
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: before populate_with_html_head_body");
+#endif
     populate_with_html_head_body(*document);
 
     // 20. Make active document.
@@ -280,6 +298,9 @@ WebIDL::ExceptionOr<BrowsingContext::BrowsingContextAndDocument> BrowsingContext
     document->completely_finish_loading();
 
     // 22. Return browsingContext and document.
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[wasm_step] create_bc_and_doc: done");
+#endif
     return BrowsingContext::BrowsingContextAndDocument { browsing_context, document };
 }
 

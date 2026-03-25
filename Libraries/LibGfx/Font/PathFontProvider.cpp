@@ -16,6 +16,17 @@ namespace Gfx {
 PathFontProvider::PathFontProvider() = default;
 PathFontProvider::~PathFontProvider() = default;
 
+void PathFontProvider::load_font_from_bytes(ByteBuffer bytes)
+{
+    // try_load_from_temporary_memory copies the bytes and keeps them alive inside the Typeface
+    // via m_font_data — safe even after the ByteBuffer parameter is destroyed.
+    if (auto font_or_error = Typeface::try_load_from_temporary_memory(bytes); !font_or_error.is_error()) {
+        auto font = font_or_error.release_value();
+        auto& family = m_typeface_by_family.ensure(font->family(), [] { return Vector<NonnullRefPtr<Typeface>> {}; });
+        family.append(move(font));
+    }
+}
+
 void PathFontProvider::load_all_fonts_from_uri(StringView uri)
 {
     auto root_or_error = Core::Resource::load_from_uri(uri);

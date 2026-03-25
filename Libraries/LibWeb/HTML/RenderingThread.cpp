@@ -224,6 +224,55 @@ public:
         m_queued_rasterization_tasks--;
         m_ready_to_paint.signal();
     }
+
+#ifdef AK_OS_EMSCRIPTEN
+    // On WASM there is no background compositor thread, so present_frame() drains
+    // the command queue and renders synchronously on the main thread.
+    void present_frame_synchronous(Gfx::IntRect viewport_rect)
+    {
+        // Drain all pending compositor commands.
+        while (true) {
+            Optional<CompositorCommand> command;
+            {
+                Threading::MutexLocker const locker { m_mutex };
+                if (m_command_queue.is_empty())
+                    break;
+                command = m_command_queue.dequeue();
+            }
+            command->visit(
+                [this](UpdateDisplayListCommand& cmd) {
+                    m_cached_display_list = move(cmd.display_list);
+                    m_cached_scroll_state_snapshot = move(cmd.scroll_state_snapshot);
+                },
+                [this](UpdateBackingStoresCommand& cmd) {
+                    m_backing_stores.front_store = move(cmd.front_store);
+                    m_backing_stores.back_store = move(cmd.back_store);
+                    m_backing_stores.front_bitmap_id = cmd.front_bitmap_id;
+                    m_backing_stores.back_bitmap_id = cmd.back_bitmap_id;
+                },
+                [this](ScreenshotCommand& cmd) {
+                    if (!m_cached_display_list)
+                        return;
+                    m_skia_player->execute(*m_cached_display_list, Painting::ScrollStateSnapshotByDisplayList(m_cached_scroll_state_snapshot), *cmd.target_surface);
+                    if (cmd.callback)
+                        cmd.callback();
+                });
+        }
+
+        if (m_cached_display_list && m_backing_stores.is_valid()) {
+            m_skia_player->execute(*m_cached_display_list, Painting::ScrollStateSnapshotByDisplayList(m_cached_scroll_state_snapshot), *m_backing_stores.back_store);
+            i32 rendered_bitmap_id = m_backing_stores.back_bitmap_id;
+            m_backing_stores.swap();
+            // Call presentation callback directly — we are already on the main thread.
+            m_presentation_callback(viewport_rect, rendered_bitmap_id);
+        }
+
+        {
+            Threading::MutexLocker const locker { m_mutex };
+            m_needs_present = false;
+        }
+    }
+#endif
 };
 
 RenderingThread::RenderingThread(PresentationCallback presentation_callback)
@@ -239,12 +288,20 @@ RenderingThread::~RenderingThread()
 void RenderingThread::start(DisplayListPlayerType)
 {
     VERIFY(m_thread_data->has_skia_player());
+#ifdef AK_OS_EMSCRIPTEN
+    // Emscripten MVP: no pthreads (requires COOP/COEP headers).
+    // Rendering is driven synchronously from present_frame() on the main thread.
+    // The ThreadData compositor_loop() is never entered; commands are drained
+    // inline by the present_frame path instead.
+    (void)m_thread; // suppress unused-member warning
+#else
     m_thread = Threading::Thread::construct("Renderer"sv, [thread_data = m_thread_data] {
         thread_data->compositor_loop();
         return static_cast<intptr_t>(0);
     });
     m_thread->start();
     m_thread->detach();
+#endif
 }
 
 void RenderingThread::set_skia_player(OwnPtr<Painting::DisplayListPlayerSkia>&& player)
@@ -264,7 +321,13 @@ void RenderingThread::update_backing_stores(RefPtr<Gfx::PaintingSurface> front, 
 
 void RenderingThread::present_frame(Gfx::IntRect viewport_rect)
 {
+#ifdef AK_OS_EMSCRIPTEN
+    // No background compositor thread on WASM — drain the command queue and
+    // execute the display list synchronously on the main thread.
+    m_thread_data->present_frame_synchronous(viewport_rect);
+#else
     m_thread_data->set_needs_present(viewport_rect);
+#endif
 }
 
 void RenderingThread::request_screenshot(NonnullRefPtr<Gfx::PaintingSurface> target_surface, Function<void()>&& callback)

@@ -13,7 +13,6 @@
 #include <LibJS/Runtime/NativeFunction.h>
 #include <LibJS/Runtime/Realm.h>
 #include <LibJS/Runtime/VM.h>
-
 namespace JS {
 
 GC_DEFINE_ALLOCATOR(Realm);

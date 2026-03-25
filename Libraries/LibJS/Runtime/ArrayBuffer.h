@@ -360,7 +360,7 @@ static void numeric_to_raw_bytes(VM& vm, Value value, bool is_little_endian, Byt
     }
     if constexpr (!IsIntegral<UnderlyingBufferDataType>)
         VERIFY_NOT_REACHED();
-    if constexpr (sizeof(UnderlyingBufferDataType) == 8) {
+    else if constexpr (sizeof(UnderlyingBufferDataType) == 8) {
         UnderlyingBufferDataType int_value;
 
         if constexpr (IsSigned<UnderlyingBufferDataType>)
@@ -371,7 +371,7 @@ static void numeric_to_raw_bytes(VM& vm, Value value, bool is_little_endian, Byt
         ReadonlyBytes { &int_value, sizeof(UnderlyingBufferDataType) }.copy_to(raw_bytes);
         flip_if_needed();
         return;
-    } else {
+    } else if constexpr (IsIntegral<UnderlyingBufferDataType>) {
         UnderlyingBufferDataType int_value;
         if constexpr (IsSigned<UnderlyingBufferDataType>) {
             if constexpr (sizeof(UnderlyingBufferDataType) == 4)

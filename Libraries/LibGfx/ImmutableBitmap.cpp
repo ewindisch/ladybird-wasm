@@ -222,6 +222,7 @@ ErrorOr<NonnullRefPtr<ImmutableBitmap>> ImmutableBitmap::create_from_yuv(Nonnull
     return adopt_ref(*new ImmutableBitmap(make<ImmutableBitmapImpl>(move(impl))));
 }
 
+#ifndef __EMSCRIPTEN__
 static sk_sp<SkColorSpace> color_space_from_cicp(Media::CodingIndependentCodePoints const& cicp)
 {
     auto gamut = [&] {
@@ -307,6 +308,7 @@ static sk_sp<SkColorSpace> color_space_from_cicp(Media::CodingIndependentCodePoi
 
     return SkColorSpace::MakeRGB(transfer_function, gamut);
 }
+#endif // !__EMSCRIPTEN__
 
 bool ImmutableBitmap::ensure_sk_image(SkiaBackendContext& context) const
 {
@@ -326,11 +328,14 @@ bool ImmutableBitmap::ensure_sk_image(SkiaBackendContext& context) const
     if (m_impl->sk_image) {
         if (!gr_context)
             return true; // No GPU, but raster image is still usable
+#ifndef __EMSCRIPTEN__
+        // Ganesh GPU backend is disabled in the WASM CPU-only Skia build.
         auto gpu_image = SkImages::TextureFromImage(gr_context, m_impl->sk_image.get(), skgpu::Mipmapped::kNo, skgpu::Budgeted::kYes);
         if (gpu_image) {
             m_impl->context = context;
             m_impl->sk_image = move(gpu_image);
         }
+#endif
         return true;
     }
 
@@ -340,6 +345,8 @@ bool ImmutableBitmap::ensure_sk_image(SkiaBackendContext& context) const
     if (!gr_context)
         return false; // No GPU, cannot create image from YUV data
 
+#ifndef __EMSCRIPTEN__
+    // Ganesh GPU backend is disabled in the WASM CPU-only Skia build.
     auto const& pixmaps = m_impl->yuv_data->skia_yuva_pixmaps();
     auto color_space = color_space_from_cicp(m_impl->yuv_data->cicp());
 
@@ -355,6 +362,7 @@ bool ImmutableBitmap::ensure_sk_image(SkiaBackendContext& context) const
 
     m_impl->context = context;
     m_impl->sk_image = move(sk_image);
+#endif
     return true;
 }
 

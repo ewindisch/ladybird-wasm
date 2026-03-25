@@ -22,16 +22,21 @@ set(SOURCES
 ladybird_lib(LibMedia media EXPLICIT_SYMBOL_EXPORT)
 target_link_libraries(LibMedia PRIVATE LibCore LibCrypto LibIPC LibGfx LibThreading LibUnicode)
 
-target_sources(LibMedia PRIVATE
-        FFmpeg/FFmpegAudioConverter.cpp
-        FFmpeg/FFmpegAudioDecoder.cpp
-        FFmpeg/FFmpegDemuxer.cpp
-        FFmpeg/FFmpegHelpers.cpp
-        FFmpeg/FFmpegIOContext.cpp
-        FFmpeg/FFmpegVideoDecoder.cpp
-)
+if (NOT EMSCRIPTEN)
+    target_sources(LibMedia PRIVATE
+            FFmpeg/FFmpegAudioConverter.cpp
+            FFmpeg/FFmpegAudioDecoder.cpp
+            FFmpeg/FFmpegDemuxer.cpp
+            FFmpeg/FFmpegHelpers.cpp
+            FFmpeg/FFmpegIOContext.cpp
+            FFmpeg/FFmpegVideoDecoder.cpp
+    )
+endif()
 
-if (NOT ANDROID)
+if (EMSCRIPTEN)
+    # No FFmpeg for WASM; provide stubs for the FFmpeg C++ class methods.
+    target_sources(LibMedia PRIVATE StubsEmscripten.cpp)
+elseif (NOT ANDROID)
     target_link_libraries(LibMedia PRIVATE PkgConfig::AVCODEC PkgConfig::AVFORMAT PkgConfig::AVUTIL PkgConfig::LIBSWRESAMPLE)
 else()
     target_include_directories(LibMedia PRIVATE ${FFMPEG_INCLUDE_DIRS})

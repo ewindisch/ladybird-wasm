@@ -25,6 +25,8 @@ public:
     void set_name_but_fixme_should_create_custom_system_font_provider(String name) { m_name = move(name); }
 
     void load_all_fonts_from_uri(StringView);
+    // Load a font directly from raw bytes (bypasses MappedFile/mmap — useful for WASM/Emscripten).
+    void load_font_from_bytes(ByteBuffer);
 
     virtual RefPtr<Gfx::Font> get_font(FlyString const& family, float point_size, unsigned weight, unsigned width, unsigned slope, Optional<FontVariationSettings> const& font_variation_settings = {}, Optional<Gfx::ShapeFeatures> const& shape_features = {}) override;
     virtual void for_each_typeface_with_family_name(FlyString const& family_name, Function<void(Typeface const&)>) override;

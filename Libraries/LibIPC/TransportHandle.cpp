@@ -20,9 +20,13 @@ TransportHandle::TransportHandle(File file)
 
 ErrorOr<NonnullOwnPtr<Transport>> TransportHandle::create_transport() const
 {
+#ifdef __EMSCRIPTEN__
+    return Error::from_string_literal("TransportSocket not available in WASM build");
+#else
     auto socket = TRY(Core::LocalSocket::adopt_fd(m_file.take_fd()));
     TRY(socket->set_blocking(false));
     return make<Transport>(move(socket));
+#endif
 }
 
 template<>

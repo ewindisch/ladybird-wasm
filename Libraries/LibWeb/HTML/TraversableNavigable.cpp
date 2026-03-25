@@ -19,7 +19,6 @@
 #include <LibWeb/HTML/NavigableContainer.h>
 #include <LibWeb/HTML/Navigation.h>
 #include <LibWeb/HTML/NavigationParams.h>
-#include <LibWeb/HTML/Parser/HTMLParser.h>
 #include <LibWeb/HTML/SessionHistoryEntry.h>
 #include <LibWeb/HTML/StructuredSerialize.h>
 #include <LibWeb/HTML/TraversableNavigable.h>
@@ -159,10 +158,34 @@ WebIDL::ExceptionOr<GC::Ref<TraversableNavigable>> TraversableNavigable::create_
     //         Skip the initial navigation as well. This matches the behavior of the window open steps.
 
     if (url_matches_about_blank(initial_navigation_url)) {
-        Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(traversable->heap(), [traversable, initial_navigation_url] {
-            // FIXME: We do this other places too when creating a new about:blank document. Perhaps it's worth a spec issue?
-            HTML::HTMLParser::the_end(*traversable->active_document());
+        Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(traversable->heap(), [traversable] {
+            auto& document = *traversable->active_document();
+            // AD-HOC: Create <html><head><body> structure so Document::body() is non-null.
+            // Without a body element, Document::allows_adding_render_blocking_elements() returns
+            // true (content_type=="text/html" && !body()), keeping is_render_blocked() true for
+            // 30 s and preventing any paint call from reaching ladybirdOnPaint.
+            // Calling populate_with_html_head_and_body() is preferable to running the HTML parser
+            // (HTMLParser::create + run()) because the parser sets m_parser on the document and
+            // its call graph contains paths to spin_until/emscripten_sleep that interfere with
+            // ASYNCIFY state when called inside the wasm_initialize ASYNCIFY scope.
+            // This deferred fires as setTimeout(0), before the 16 ms paint timer, so body() is
+            // non-null by the time update_the_rendering() first checks is_render_blocked().
+            // Guard: create_a_new_browsing_context_and_document may already have called
+            // populate_with_html_head_and_body() — calling it a second time yields
+            // HierarchyRequestError because <html> already exists in the document.
+            if (!document.body())
+                MUST(document.populate_with_html_head_and_body());
 
+            // AD-HOC: Mark the document complete directly instead of calling HTMLParser::the_end().
+            // HTMLParser::the_end() contains three spin_until() calls that invoke emscripten_sleep(0),
+            // triggering ASYNCIFY unwind/rewind cycles inside the browser's animation-frame callback.
+            // For about:blank there are no scripts or render-blocking resources to wait for, so the
+            // spin_until conditions are immediately satisfied — but in practice the ASYNCIFY state
+            // machine saturates the browser task queue with rapid setTimeout(0) re-entries, freezing
+            // the page and preventing Playwright's page.evaluate() from ever running.
+            // Directly setting Complete is correct: this document has no parser, no deferred scripts,
+            // and no pending load-event blockers.
+            document.update_readiness(HTML::DocumentReadyState::Complete);
             // FIXME: If we perform the URL and history update steps here, we start hanging tests and the UI process will
             //        try to load() the initial URLs passed on the command line before we finish processing the events here.
             //        However, because we call this before the PageClient is fully initialized... that gets awkward.
@@ -797,7 +820,10 @@ TraversableNavigable::HistoryStepResult TraversableNavigable::apply_the_history_
                 update_document();
             }
             // 5. Otherwise, queue a global task on the navigation and traversal task source given targetEntry's document's relevant global object to perform updateDocument
-            else {
+            // AD-HOC: If targetEntry's document is null (e.g. a non-fetch scheme URL whose
+            //         attempt_to_create_a_non_fetch_scheme_document returned null), skip the
+            //         update — there is no document to update history state on.
+            else if (target_entry->document()) {
                 queue_global_task(Task::Source::NavigationAndTraversal, relevant_global_object(*target_entry->document()), GC::create_function(heap, move(update_document)));
             }
 

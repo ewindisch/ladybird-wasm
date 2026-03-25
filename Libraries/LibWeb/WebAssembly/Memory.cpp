@@ -305,10 +305,12 @@ JS::ThrowCompletionOr<GC::Ref<JS::ArrayBuffer>> Memory::create_a_resizable_memor
     VERIFY(memory);
 
     // 3. If maxsize > (65536 × 65536),
+#if UINTPTR_MAX > 0xFFFFFFFFU
     if (max_size > (65536 * Wasm::Constants::page_size)) {
         // 1. Throw a RangeError exception.
         return vm.throw_completion<JS::RangeError>("Maximum memory length exceeds 65536 * 65536 bytes"sv);
     }
+#endif
 
     // https://webassembly.github.io/threads/js-api/index.html#create-a-resizable-memory-buffer
     // 5. If share is shared,

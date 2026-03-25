@@ -148,7 +148,7 @@ private:
     u32 m_dictionary_generation { 0 };
 };
 
-#if !defined(AK_OS_WINDOWS)
+#if !defined(AK_OS_WINDOWS) && !defined(AK_OS_EMSCRIPTEN)
 static_assert(sizeof(Shape) == 96, "Keep the size of JS::Shape down!");
 #endif
 

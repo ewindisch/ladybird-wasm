@@ -26,6 +26,12 @@ class WEB_API ResourceLoader : public Core::EventReceiver {
 
 public:
     static void initialize(GC::Heap&, NonnullRefPtr<Requests::RequestClient>);
+#ifdef AK_OS_EMSCRIPTEN
+    // WASM builds have no IPC/RequestServer process.  Metadata fields
+    // (user_agent, platform, preferred_languages) still work; actual
+    // network loads go through the WASM networking layer (tor-bridge.js).
+    static void initialize_for_wasm(GC::Heap&);
+#endif
     static bool is_initialized();
     static ResourceLoader& the();
 
@@ -67,6 +73,9 @@ public:
 
 private:
     explicit ResourceLoader(GC::Heap&, NonnullRefPtr<Requests::RequestClient>);
+#ifdef AK_OS_EMSCRIPTEN
+    explicit ResourceLoader(GC::Heap&); // WASM-only: no RequestClient
+#endif
 
     struct FileLoadResult {
         ReadonlyBytes data;

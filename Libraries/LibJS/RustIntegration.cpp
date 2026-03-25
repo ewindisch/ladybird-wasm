@@ -6,6 +6,10 @@
 
 #include <LibJS/RustIntegration.h>
 
+#ifdef AK_OS_EMSCRIPTEN
+#    include <emscripten.h>
+#endif
+
 #include <AK/Utf16String.h>
 #include <AK/Utf16View.h>
 #include <LibGC/DeferGC.h>
@@ -588,6 +592,9 @@ Optional<Result<GC::Ref<SharedFunctionInstanceData>, String>> compile_dynamic_fu
 Optional<Vector<GC::Root<SharedFunctionInstanceData>>> compile_builtin_file(
     unsigned char const* script_text, VM& vm)
 {
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[rust_int] compile_builtin_file start");
+#endif
     auto script_text_as_utf16 = Utf16String::from_utf8_without_validation({ script_text, strlen(reinterpret_cast<char const*>(script_text)) });
     auto code = SourceCode::create("BuiltinFile"_string, move(script_text_as_utf16));
 
@@ -600,8 +607,14 @@ Optional<Vector<GC::Root<SharedFunctionInstanceData>>> compile_builtin_file(
 
     auto const* source_ptr = code->utf16_data();
 
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[rust_int] rust_compile_builtin_file start");
+#endif
     rust_compile_builtin_file(source_ptr, length, &vm, code.ptr(), &shared_data_list, collect_builtin_function,
         nullptr, nullptr);
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[rust_int] rust_compile_builtin_file done");
+#endif
 
     return shared_data_list;
 }

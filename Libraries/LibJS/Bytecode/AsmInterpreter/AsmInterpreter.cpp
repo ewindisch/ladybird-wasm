@@ -634,7 +634,7 @@ i64 asm_try_get_global_env_binding(Interpreter* interp, u32 pc)
 {
     auto* bytecode = interp->current_executable().bytecode.data();
     auto& insn = *reinterpret_cast<Op::GetGlobal const*>(&bytecode[pc]);
-    auto& cache = *bit_cast<GlobalVariableCache*>(insn.cache());
+    auto& cache = *reinterpret_cast<GlobalVariableCache*>(static_cast<uintptr_t>(insn.cache()));
 
     if (!cache.has_environment_binding_index) [[unlikely]]
         return 1;
@@ -664,7 +664,7 @@ i64 asm_try_set_global_env_binding(Interpreter* interp, u32 pc)
 {
     auto* bytecode = interp->current_executable().bytecode.data();
     auto& insn = *reinterpret_cast<Op::SetGlobal const*>(&bytecode[pc]);
-    auto& cache = *bit_cast<GlobalVariableCache*>(insn.cache());
+    auto& cache = *reinterpret_cast<GlobalVariableCache*>(static_cast<uintptr_t>(insn.cache()));
 
     if (!cache.has_environment_binding_index) [[unlikely]]
         return 1;
@@ -863,7 +863,7 @@ i64 asm_try_put_by_id_cache(Interpreter* interp, u32 pc)
         return 1;
     auto& object = base.as_object();
     auto value = interp->get(insn.src());
-    auto& cache = *bit_cast<PropertyLookupCache*>(insn.cache());
+    auto& cache = *reinterpret_cast<PropertyLookupCache*>(static_cast<uintptr_t>(insn.cache()));
 
     for (size_t i = 0; i < cache.entries.size(); ++i) {
         auto& entry = cache.entries[i];
@@ -918,7 +918,7 @@ i64 asm_try_get_by_id_cache(Interpreter* interp, u32 pc)
         return 1;
     auto& object = base.as_object();
     auto& shape = object.shape();
-    auto& cache = *bit_cast<PropertyLookupCache*>(insn.cache());
+    auto& cache = *reinterpret_cast<PropertyLookupCache*>(static_cast<uintptr_t>(insn.cache()));
 
     for (auto& entry : cache.entries) {
         auto cached_prototype = entry.prototype.ptr();

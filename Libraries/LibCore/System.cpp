@@ -145,7 +145,11 @@ ErrorOr<void> munmap(void* address, size_t size)
 ErrorOr<int> anon_create([[maybe_unused]] size_t size, [[maybe_unused]] int options)
 {
     int fd = -1;
-#if defined(AK_OS_LINUX) || defined(AK_OS_FREEBSD)
+#if defined(AK_OS_EMSCRIPTEN)
+    // Emscripten has no memfd/shm_open. Return a sentinel fd; AnonymousBuffer
+    // on Emscripten uses malloc-backed memory and never calls ftruncate/mmap.
+    return -1;
+#elif defined(AK_OS_LINUX) || defined(AK_OS_FREEBSD)
     // FIXME: Support more options on Linux.
     auto linux_options = ((options & O_CLOEXEC) > 0) ? MFD_CLOEXEC : 0;
     fd = memfd_create("", linux_options);
@@ -718,7 +722,10 @@ u64 physical_memory_bytes()
 ErrorOr<ByteString> current_executable_path()
 {
     char path[4096] = {};
-#if defined(AK_OS_LINUX) || defined(AK_OS_ANDROID)
+#if defined(AK_OS_EMSCRIPTEN)
+    // There is no meaningful executable path in a WASM environment.
+    return ByteString { "ladybird.wasm" };
+#elif defined(AK_OS_LINUX) || defined(AK_OS_ANDROID)
     auto ret = ::readlink("/proc/self/exe", path, sizeof(path) - 1);
     // Ignore error if it wasn't a symlink
     if (ret == -1 && errno != EINVAL)

@@ -10,10 +10,15 @@
 #include <stdint.h>
 
 extern "C" {
-#if defined(AK_OS_WINDOWS)
-typedef uint32_t mp_digit;
-#else
+// Mirror tommath.h's MP_64BIT / MP_32BIT selection:
+// 64-bit mp_digit only on 64-bit GCC/Clang platforms that support __int128.
+#if !defined(AK_OS_WINDOWS) && (defined(__x86_64__) || defined(__powerpc64__) || \
+    defined(__ppc64__) || defined(__aarch64__) || defined(__s390x__) || \
+    defined(__LP64__) || defined(_LP64) || defined(__64BIT__)) && \
+    defined(__GNUC__) && !defined(__hppa)
 typedef uint64_t mp_digit;
+#else
+typedef uint32_t mp_digit;
 #endif
 typedef int mp_sign;
 

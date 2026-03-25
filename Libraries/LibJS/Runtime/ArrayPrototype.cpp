@@ -24,6 +24,9 @@
 #include <LibJS/Runtime/Realm.h>
 #include <LibJS/Runtime/Value.h>
 #include <LibJS/Runtime/ValueInlines.h>
+#ifdef AK_OS_EMSCRIPTEN
+#    include <emscripten.h>
+#endif
 
 namespace JS {
 
@@ -38,6 +41,9 @@ ArrayPrototype::ArrayPrototype(Realm& realm)
 
 void ArrayPrototype::initialize(Realm& realm)
 {
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[intrinsics] ArrayPrototype::initialize start");
+#endif
     auto& vm = this->vm();
     Base::initialize(realm);
     u8 attr = Attribute::Writable | Attribute::Configurable;
@@ -107,6 +113,9 @@ void ArrayPrototype::initialize(Realm& realm)
     MUST(unscopable_list->create_data_property_or_throw(vm.names.values, Value(true)));
 
     define_direct_property(vm.well_known_symbol_unscopables(), unscopable_list, Attribute::Configurable);
+#ifdef AK_OS_EMSCRIPTEN
+    emscripten_log(EM_LOG_CONSOLE, "[intrinsics] ArrayPrototype::initialize done");
+#endif
 }
 
 // 10.4.2.3 ArraySpeciesCreate ( originalArray, length ), https://tc39.es/ecma262/#sec-arrayspeciescreate

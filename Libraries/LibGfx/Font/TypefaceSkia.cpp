@@ -17,6 +17,9 @@
 #    include <ports/SkFontMgr_android.h>
 #elif defined(AK_OS_WINDOWS)
 #    include <ports/SkTypeface_win.h>
+#elif defined(AK_OS_EMSCRIPTEN)
+// Emscripten: use the FreeType-backed custom font manager so makeFromData() works.
+#    include <ports/SkFontMgr_data.h>
 #else
 #    include <ports/SkFontMgr_fontconfig.h>
 #    include <ports/SkFontScanner_FreeType.h>
@@ -46,6 +49,12 @@ static SkFontMgr& font_manager()
         s_font_manager = SkFontMgr_New_Android(nullptr);
 #elif defined(AK_OS_WINDOWS)
         s_font_manager = SkFontMgr_New_DirectWrite();
+#elif defined(AK_OS_EMSCRIPTEN)
+        // SkFontMgr::RefEmpty()'s makeFromData() returns nullptr — fonts can't load.
+        // SkFontMgr_New_Custom_Data with an empty span initialises a FreeType-backed
+        // SkFontMgr_Custom whose onMakeFromData() works, allowing
+        // PathFontProvider::load_font_from_bytes to register typefaces successfully.
+        s_font_manager = SkFontMgr_New_Custom_Data(SkSpan<sk_sp<SkData>>{});
 #else
         if (!s_font_manager) {
             s_font_manager = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());

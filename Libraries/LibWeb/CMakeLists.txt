@@ -4,13 +4,25 @@ include(vulkan)
 include(skia)
 include(SDL3)
 
-find_package(unofficial-angle CONFIG)
-if(unofficial-angle_FOUND)
-    set(ANGLE_TARGETS unofficial::angle::libEGL unofficial::angle::libGLESv2)
+if(EMSCRIPTEN)
+    # ANGLE (OpenGL ES / EGL) is not needed for the WASM 2D-canvas-only build.
+    # Provide an empty stub so targets that link ANGLE_TARGETS compile cleanly.
+    # Also provide stub ANGLE extension headers (gl2ext_angle.h, eglext_angle.h)
+    # — the real GLES2/EGL headers come from Emscripten's sysroot automatically.
+    add_library(angle_wasm_stub INTERFACE)
+    target_include_directories(angle_wasm_stub INTERFACE
+        "${CMAKE_SOURCE_DIR}/Meta/CMake/stub-headers"
+    )
+    set(ANGLE_TARGETS angle_wasm_stub)
 else()
-    find_package(PkgConfig)
-    pkg_check_modules(angle REQUIRED IMPORTED_TARGET angle)
-    set(ANGLE_TARGETS PkgConfig::angle)
+    find_package(unofficial-angle CONFIG)
+    if(unofficial-angle_FOUND)
+        set(ANGLE_TARGETS unofficial::angle::libEGL unofficial::angle::libGLESv2)
+    else()
+        find_package(PkgConfig)
+        pkg_check_modules(angle REQUIRED IMPORTED_TARGET angle)
+        set(ANGLE_TARGETS PkgConfig::angle)
+    endif()
 endif()
 
 set(SOURCES
@@ -1208,6 +1220,10 @@ set(GENERATED_SOURCES
     HTML/MediaControlsDOM.cpp
     HTML/Parser/NamedCharacterReferences.cpp
 )
+
+if (EMSCRIPTEN)
+    list(APPEND SOURCES WebGL/WebGLStubsEmscripten.cpp)
+endif()
 
 ladybird_lib(LibWeb web EXPLICIT_SYMBOL_EXPORT)
 

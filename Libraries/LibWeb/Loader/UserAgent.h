@@ -25,6 +25,10 @@ namespace Web {
 #    define CPU_STRING "PowerPC 64"
 #elif ARCH(PPC)
 #    define CPU_STRING "PowerPC"
+#elif defined(__wasm32__) || defined(__EMSCRIPTEN__)
+#    define CPU_STRING "wasm32"
+#elif defined(__wasm64__)
+#    define CPU_STRING "wasm64"
 #else
 #    error Unknown architecture
 #endif
@@ -55,6 +59,8 @@ namespace Web {
 #    define OS_STRING "Haiku"
 #elif defined(AK_OS_GNU_HURD)
 #    define OS_STRING "GNU/Hurd"
+#elif defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
+#    define OS_STRING "Linux"
 #else
 #    error Unknown OS
 #endif
@@ -67,8 +73,15 @@ namespace Web {
 //     We will need to update this periodically to match a somewhat recent version.
 #define SAD_COMPATIBILITY_HACK "Chrome/146.0.0.0 AppleWebKit/537.36 Safari/537.36"
 
+#if defined(AK_OS_EMSCRIPTEN) || defined(__EMSCRIPTEN__)
+// Match Tor Browser's frozen UA to avoid fingerprinting.
+// Tor Browser 14.x uses Firefox ESR 128 on a normalized Windows platform.
+constexpr auto default_user_agent = "Mozilla/5.0 (Windows NT 10.0; rv:128.0) Gecko/20100101 Firefox/128.0"sv;
+constexpr auto default_platform = "Win32"sv;
+#else
 constexpr auto default_user_agent = "Mozilla/5.0 (" OS_STRING "; " CPU_STRING ") " BROWSER_NAME "/" BROWSER_VERSION " " SAD_COMPATIBILITY_HACK ""sv;
 constexpr auto default_platform = OS_STRING " " CPU_STRING ""sv;
+#endif
 constexpr auto default_navigator_compatibility_mode = NavigatorCompatibilityMode::Chrome;
 
 }
