@@ -72,7 +72,7 @@ if (NOT WIN32)
     endif()
 endif()
 
-if (NOT WIN32 AND NOT APPLE AND NOT ENABLE_FUZZERS)
+if (NOT WIN32 AND NOT APPLE AND NOT ENABLE_FUZZERS AND NOT EMSCRIPTEN)
     # NOTE: Assume ELF
     # NOTE: --no-undefined is not compatible with clang sanitizer runtimes
     # NOTE: Some BSDs don't export all symbols from LibC so we can't use --no-undefined

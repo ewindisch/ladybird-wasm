@@ -1,4 +1,29 @@
-include_guard()
+include_guard(GLOBAL)
+
+# Emscripten: use a pre-built Skia CPU-only static library.
+# Build it once with: cd third_party/skia && ./compile.sh cpu
+# (skia_enable_ganesh=false skia_use_webgl=false produces libskia.a)
+if(EMSCRIPTEN)
+    set(SKIA_PREBUILT_DIR "" CACHE PATH "Path to pre-built Skia directory (contains libskia.a and include/)")
+    if(NOT SKIA_PREBUILT_DIR)
+        message(FATAL_ERROR "WASM build requires SKIA_PREBUILT_DIR pointing to a CPU-only Skia build. "
+            "Build with: cd third_party/skia && ./compile.sh cpu")
+    endif()
+    # Skia headers use two include styles:
+    #   #include <core/SkFoo.h>         (root = skia_source/include)
+    #   #include "include/core/SkFoo.h" (root = skia_source)
+    # Both roots must be on the include path.
+    # SKIA_PREBUILT_DIR is e.g. .../third_party/skia/out/wasm-cpu
+    # Go up two levels (.../third_party/skia/out/ then .../third_party/skia/)
+    get_filename_component(_skia_out_dir "${SKIA_PREBUILT_DIR}" DIRECTORY)
+    get_filename_component(_skia_src_dir "${_skia_out_dir}" DIRECTORY)
+    add_library(skia STATIC IMPORTED GLOBAL)
+    set_target_properties(skia PROPERTIES
+        IMPORTED_LOCATION "${SKIA_PREBUILT_DIR}/libskia.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${_skia_src_dir};${_skia_src_dir}/include"
+    )
+    return()
+endif()
 
 include(fontconfig)
 

@@ -41,6 +41,7 @@
     "fast-float",
     {
       "name": "ffmpeg",
+      "platform": "!emscripten",
       "features": [
         "avcodec",
         "avformat",
@@ -76,6 +77,10 @@
         "icu"
       ]
     },
+    {
+      "name": "harfbuzz",
+      "platform": "emscripten"
+    },
     "icu",
     {
       "name": "libavif",
@@ -97,7 +102,7 @@
     },
     {
       "name": "libproxy",
-      "platform": "!(android | bsd)"
+      "platform": "!(android | bsd | emscripten)"
     },
     "libtommath",
     {
@@ -166,6 +171,7 @@
     },
     {
       "name": "sdl3",
+      "platform": "!emscripten",
       "default-features": false
     },
     "simdjson",
@@ -219,8 +225,14 @@
         "zstd"
       ]
     },
-    "vulkan",
-    "vulkan-headers",
+    {
+      "name": "vulkan",
+      "platform": "!emscripten"
+    },
+    {
+      "name": "vulkan-headers",
+      "platform": "!emscripten"
+    },
     "woff2",
     "zlib"
   ],

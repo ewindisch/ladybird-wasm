@@ -628,7 +628,7 @@ def generate_fixup_cache_function(ops: List[OpDef]) -> str:
         lines.append(f"        auto& op = static_cast<Op::{op.name}&>(insn);")
         lines.append("        auto index = op.cache();")
         lines.append("        if (index != NO_CACHE)")
-        lines.append(f"            op.set_cache(bit_cast<u64>(&{vector_name}[index]));")
+        lines.append(f"            op.set_cache(static_cast<u64>(reinterpret_cast<uintptr_t>(&{vector_name}[index])));")
         lines.append("        else")
         lines.append("            op.set_cache(0);")
         lines.append("        break;")

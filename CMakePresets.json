@@ -10,6 +10,12 @@
   ],
   "buildPresets": [
     {
+      "name": "Wasm",
+      "configurePreset": "Wasm",
+      "displayName": "WASM Build",
+      "description": "Build Ladybird as WebAssembly using Emscripten"
+    },
+    {
       "name": "Release",
       "inherits": "base",
       "configurePreset": "Release",
