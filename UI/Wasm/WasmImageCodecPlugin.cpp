@@ -53,4 +53,25 @@ WasmImageCodecPlugin::decode_image(
     return promise;
 }
 
+ErrorOr<Web::Platform::DecodedFirstFrame>
+WasmImageCodecPlugin::decode_first_frame_synchronously(ReadonlyBytes bytes)
+{
+    auto decoder_or_error = Gfx::ImageDecoder::try_create_for_raw_bytes(bytes);
+    if (decoder_or_error.is_error())
+        return decoder_or_error.release_error();
+    auto decoder = decoder_or_error.release_value();
+    if (!decoder)
+        return Error::from_string_literal("Unknown image format");
+
+    auto frame_or_error = decoder->frame(0);
+    if (frame_or_error.is_error())
+        return frame_or_error.release_error();
+    auto frame = frame_or_error.release_value();
+
+    return Web::Platform::DecodedFirstFrame {
+        .bitmap = move(frame.image),
+        .color_space = frame.color_space,
+    };
+}
+
 }

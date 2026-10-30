@@ -32,11 +32,12 @@ ErrorOr<int> ladybird_main(Main::Arguments)
     // Initialize the GC/JS VM — must happen before any WasmPageClient is created.
     Web::Bindings::initialize_main_thread_vm(Web::Bindings::AgentType::SimilarOriginWindow);
 
+
 #ifdef AK_OS_EMSCRIPTEN
-    // Initialize ResourceLoader without an IPC RequestClient.
-    // Required for metadata access (user_agent, preferred_languages) during navigation.
-    // Actual network requests use the WASM networking layer (tor-bridge.js).
-    Web::ResourceLoader::initialize_for_wasm(Web::Bindings::main_thread_vm().heap());
+    // Initialize ResourceLoader without a RequestClient: the WASM networking
+    // layer (tor-bridge.js / $LadybirdHTTP) carries actual network loads; see
+    // the AK_OS_EMSCRIPTEN branch in ResourceLoader::load().
+    Web::ResourceLoader::initialize(Web::Bindings::main_thread_vm().heap());
 #endif
 
 #ifdef AK_OS_EMSCRIPTEN

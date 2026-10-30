@@ -11,6 +11,8 @@
 #include <LibGfx/Palette.h>
 #include <LibWeb/Page/InputEvent.h>
 #include <LibWeb/Page/Page.h>
+#include <LibWebCommon/HTML/CrossProcessId.h>
+#include <LibWebCommon/Page/QueuedInputEvent.h>
 
 namespace Ladybird {
 
@@ -27,11 +29,13 @@ public:
 
     void set_viewport_size(Web::DevicePixelSize);
 
+    Web::HTML::CrossProcessIdAllocator& cross_process_id_allocator() { return m_cross_process_id_allocator; }
+
     // Bitmap access — swapped on page_did_paint; safe to read from JS callback
     RefPtr<Gfx::Bitmap> front_bitmap() const { return m_front_bitmap; }
 
     // ── Web::PageClient pure virtuals ────────────────────────────────────
-    virtual Web::PageId id() const override { return 0; }
+    virtual Web::PageId id() const override { return m_page_id; }
     virtual bool is_connection_open() const override { return true; }
     virtual Gfx::Palette palette() const override;
     virtual Web::DevicePixelRect screen_rect() const override;
@@ -49,12 +53,20 @@ public:
 
     virtual void request_frame() override { }
 
+    virtual Web::HTML::CrossProcessId allocate_cross_process_id() override
+    {
+        return m_cross_process_id_allocator.allocate();
+    }
+
 private:
     WasmPageClient(JS::VM&, Web::DevicePixelSize initial_size);
 
     virtual void visit_edges(JS::Cell::Visitor&) override;
 
     GC::Ref<Web::Page> m_page;
+    Web::PageId m_page_id { 1 };
+    // WASM runs a single in-process page, so one allocator namespace suffices.
+    Web::HTML::CrossProcessIdAllocator m_cross_process_id_allocator { /*namespace_id*/ 1 };
     Web::DevicePixelSize m_viewport_size;
 
     // Double-buffered Gfx::Bitmap pair keyed by LibWeb bitmap ids

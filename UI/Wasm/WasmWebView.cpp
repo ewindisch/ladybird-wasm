@@ -11,8 +11,9 @@
 #include <LibURL/Parser.h>
 #include <LibURL/URL.h>
 #include <LibWeb/Bindings/MainThreadVM.h>
-#include <LibWeb/HTML/TraversableNavigable.h>
+#include <LibWeb/HTML/LocalTraversableNavigable.h>
 #include <LibWeb/UIEvents/KeyCode.h>
+#include <LibWebCommon/HTML/SessionHistoryEntryDescriptor.h>
 
 namespace Ladybird {
 
@@ -25,46 +26,34 @@ ErrorOr<NonnullOwnPtr<WasmWebView>> WasmWebView::create(Gfx::IntSize initial_siz
     GC::Root<WasmPageClient> root { page_client };
     auto view = TRY(adopt_nonnull_own_or_enomem(new (nothrow) WasmWebView(move(root))));
 
-    // Initialize the top-level traversable so event handlers and paint work correctly.
-    // Without this, Page::top_level_traversable() returns a null GC::Ptr, causing
-    // a null dereference into zeroed WASM memory and VERIFY(m_ptr) to fire in
-    // EventHandler::m_drag_and_drop_event_handler on the first input event or paint.
-    //
-    // create_a_fresh_top_level_traversable returns
-    // AK::Variant<WebIDL::SimpleException, ...> which is not convertible to
-    // AK::Error via TRY(), so we use release_value_but_fixme_should_propagate_errors()
-    // and guard the subsequent calls with top_level_traversable_is_initialized().
-    Web::HTML::TraversableNavigable::create_a_fresh_top_level_traversable(
-        view->m_page_client->page(), URL::about_blank())
-        .release_value_but_fixme_should_propagate_errors();
+    // Mark the page visible before the traversable exists so update_the_rendering()
+    // does not filter the document out of the first rendering update.
+    view->m_page_client->page().set_system_visibility_state(Web::HTML::VisibilityState::Visible);
 
-    // Guard: if traversable creation failed silently, calling top_level_traversable()
-    // without this check would deref a null GC::Ptr, causing an indirect call through
-    // address 0 → RuntimeError: index out of bounds in the WASM function table.
-    if (!view->m_page_client->page().top_level_traversable_is_initialized()) {
-        emscripten_log(EM_LOG_ERROR, "top_level_traversable not initialized after create_a_fresh_top_level_traversable");
-        return Error::from_errno(ENOMEM);
-    }
+    // Create the top-level traversable from an initial about:blank session
+    // history entry, mirroring WebContent's PageHost::initialize() and
+    // LibWebView's Application::create_web_content_client() flow.
+    auto& id_allocator = view->m_page_client->cross_process_id_allocator();
+    auto root_navigable_id = id_allocator.allocate();
+    auto document_state_id = id_allocator.allocate();
+    auto initial_document_id = id_allocator.allocate();
+    (void)root_navigable_id;
+
+    auto entry = Web::HTML::create_initial_session_history_entry_descriptor(document_state_id, {}, {});
+    entry.document_state.origin = URL::Origin::create_opaque();
+
+    Web::HTML::LocalTraversableNavigable::create_a_fresh_top_level_traversable(
+        view->m_page_client->page(), move(entry), initial_document_id);
 
     // Propagate the initial device-pixel viewport size to the Navigable.
-    // BackingStoreManager::resize_backing_stores_if_needed checks viewport_rect().size()
-    // which comes from Navigable::m_viewport_size (CSS pixels).  Without this call
-    // the navigable viewport stays at 0×0, backing stores are never allocated and
-    // page_did_paint is never invoked.
+    auto* traversable = view->m_page_client->page().local_traversable();
+    if (!traversable) {
+        emscripten_log(EM_LOG_ERROR, "local traversable not initialized after create_a_fresh_top_level_traversable");
+        return Error::from_errno(ENOMEM);
+    }
     auto css_size = view->m_page_client->page().device_to_css_size(
         Web::DevicePixelSize { initial_size.width(), initial_size.height() });
-    view->m_page_client->page().top_level_traversable()->set_viewport_size(css_size);
-
-    // Mark the document visible so update_the_rendering() does not skip it.
-    // Document::m_visibility_state defaults to Hidden; without this call the
-    // RAF callback fires but EventLoop::update_the_rendering() filters out the
-    // document and page_did_paint is never invoked.
-    // set_system_visibility_state queues a UserInteraction task that calls
-    // update_the_visibility_state(Visible) — it runs before the first rendering
-    // task because the UserInteraction task is queued here and processed on the
-    // first EventLoop::process() call from the RAF main loop.
-    view->m_page_client->page().top_level_traversable()->set_system_visibility_state(
-        Web::HTML::VisibilityState::Visible);
+    traversable->set_viewport_size(css_size);
 
     return view;
 }

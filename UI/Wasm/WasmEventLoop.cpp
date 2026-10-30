@@ -23,7 +23,7 @@ static void main_loop_iteration()
     // event loop directly from the browser's animation frame instead of relying
     // on Core::Timer to call schedule()/process().
     auto& html_loop = Web::HTML::main_thread_event_loop();
-    html_loop.queue_task_to_update_the_rendering();
+    html_loop.update_the_rendering();
     html_loop.process();
 
     WasmEventLoop::process_events();

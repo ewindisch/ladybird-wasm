@@ -104,7 +104,7 @@
     "libpsl",
     {
       "name": "libedit",
-      "platform": "!windows & !android"
+      "platform": "!(windows | android | emscripten)"
     },
     "libtommath",
     {
