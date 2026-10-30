@@ -29,6 +29,8 @@ if(VCPKG_TARGET_IS_EMSCRIPTEN)
     # cache with the known-good answers for a hosted wasm32 environment.
     list(APPEND OPTIONS
         gl_cv_func_nanosleep=yes
+        gl_cv_func_sleep_works=yes
+        gl_cv_func_working_strerror=yes
         am_cv_func_iconv_works=yes
     )
 endif()

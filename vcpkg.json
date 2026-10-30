@@ -101,7 +101,10 @@
       "name": "libproxy",
       "platform": "!(android | bsd | emscripten)"
     },
-    "libpsl",
+    {
+      "name": "libpsl",
+      "platform": "!emscripten"
+    },
     {
       "name": "libedit",
       "platform": "!(windows | android | emscripten)"
