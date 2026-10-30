@@ -122,12 +122,12 @@
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
         "VCPKG_OVERLAY_TRIPLETS": "$env{LADYBIRD_SOURCE_DIR}/Meta/CMake/vcpkg",
-        "VCPKG_CHAIN_LOAD_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
         "EMSCRIPTEN": "ON",
         "CMAKE_SIZEOF_VOID_P": "4",
         "BUILD_TESTING": "OFF",
         "BUILD_BROWSER_TESTS_ONLY": "ON",
-        "ENABLE_QT": "OFF"
+        "CMAKE_SKIP_INSTALL_RULES": "ON"
       }
     }
   ],

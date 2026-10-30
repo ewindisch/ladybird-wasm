@@ -12,7 +12,7 @@ endif()
 if (NOT EMSCRIPTEN)
     find_package(mimalloc CONFIG REQUIRED)
 else()
-    add_library(mimalloc INTERFACE)
+    add_library(mimalloc INTERFACE IMPORTED GLOBAL)
 endif()
 
 # AK dependencies
