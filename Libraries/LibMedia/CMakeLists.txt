@@ -115,12 +115,6 @@ else()
         target_link_libraries(LibMedia PRIVATE PkgConfig::AVCODEC PkgConfig::AVUTIL PkgConfig::LIBSWRESAMPLE)
     endif()
 endif()
-else()
-    target_include_directories(LibMedia PRIVATE ${FFMPEG_INCLUDE_DIRS})
-    target_link_directories(LibMedia PRIVATE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(LibMedia PRIVATE ${FFMPEG_LIBRARIES})
-endif()
-
 if (LINUX)
     target_sources(LibMedia PRIVATE
         FFmpeg/SystemFFmpegDecoders.cpp

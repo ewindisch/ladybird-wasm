@@ -49,12 +49,7 @@ list(APPEND CMAKE_MODULE_PATH "${LADYBIRD_SOURCE_DIR}/Meta/CMake")
 
 include(cmake_options)
 include(compile_options)
-if(NOT EMSCRIPTEN)
-    # check_for_dependencies locates host libraries via pkg-config; the WASM
-    # build resolves its dependencies through vcpkg with the wasm32-emscripten
-    # triplet instead (see Meta/CMake/vcpkg/wasm32-emscripten.cmake).
-    include(check_for_dependencies)
-endif()
+include(check_for_dependencies)
 include(ladybird_helper_processes)
 include(revision)
 
@@ -143,7 +138,9 @@ if (NOT (ENABLE_FUZZERS OR ENABLE_COMPILER_EXPLORER_BUILD OR ANDROID OR IOS))
 endif()
 
 if (ENABLE_GUI_TARGETS)
-    add_subdirectory(Services)
+    if (NOT EMSCRIPTEN)
+        add_subdirectory(Services)
+    endif()
     add_subdirectory(UI)
 
     # Android has no Compositor process yet, so it keeps Skia elsewhere.

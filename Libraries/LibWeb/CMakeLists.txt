@@ -1,15 +1,4 @@
 include(libweb_generators)
-if(EMSCRIPTEN)
-    # ANGLE (OpenGL ES / EGL) is not needed for the WASM 2D-canvas-only build.
-    # Provide an empty stub so targets that copy ANGLE's compile interface compile
-    # cleanly. Stub ANGLE extension headers (gl2ext_angle.h, eglext_angle.h) come
-    # from Meta/CMake/stub-headers; real GLES2/EGL headers are in Emscripten's sysroot.
-    add_library(angle_wasm_stub INTERFACE)
-    target_include_directories(angle_wasm_stub INTERFACE
-        "${CMAKE_SOURCE_DIR}/Meta/CMake/stub-headers"
-    )
-    set(ANGLE_TARGETS angle_wasm_stub)
-endif()
 
 set(SOURCES
     Animations/Animatable.cpp
