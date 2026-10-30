@@ -87,15 +87,24 @@ else
     echo "WARNING: $CACERT not found — TLS connections will fail at runtime." >&2
 fi
 
-# cmake --preset requires CMake >= 3.30 (presets version 9).
-# Fall back to a direct invocation that works with CMake 3.25+.
+# Configure through vcpkg with the wasm32-emscripten triplet (dependencies are
+# resolved by vcpkg; the emscripten platform module is chain-loaded). Requires
+# CMake >= 4.1 (upstream preset files are version 9) and a bootstrapped vcpkg
+# at Build/vcpkg-wasm (see Meta/Utils/build_vcpkg.py).
 cd "$REPO_ROOT"
+if [[ ! -f "$REPO_ROOT/Build/vcpkg-wasm/scripts/buildsystems/vcpkg.cmake" ]]; then
+    echo ">>> Bootstrapping vcpkg (Build/vcpkg-wasm) ..."
+    python3 -c "import sys, pathlib; sys.path.append('Meta'); from Utils.build_vcpkg import build_vcpkg; build_vcpkg(pathlib.Path('$REPO_ROOT/Build/vcpkg-wasm').resolve())"
+fi
 cmake \
     -B "$BUILD_DIR" \
     -S "$REPO_ROOT" \
-    --toolchain Meta/CMake/EmscriptenToolchain.cmake \
+    -DCMAKE_TOOLCHAIN_FILE="$REPO_ROOT/Build/vcpkg-wasm/scripts/buildsystems/vcpkg.cmake" \
+    -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+    -DVCPKG_OVERLAY_TRIPLETS="$REPO_ROOT/Meta/CMake/vcpkg" \
+    -DVCPKG_CHAIN_LOAD_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DSKIA_PREBUILT_DIR="$SKIA_PREBUILT_DIR"
+    -DENABLE_QT=OFF
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 # Emscripten's --js-library files are not tracked as ninja dependencies.

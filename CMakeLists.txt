@@ -49,7 +49,12 @@ list(APPEND CMAKE_MODULE_PATH "${LADYBIRD_SOURCE_DIR}/Meta/CMake")
 
 include(cmake_options)
 include(compile_options)
-include(check_for_dependencies)
+if(NOT EMSCRIPTEN)
+    # check_for_dependencies locates host libraries via pkg-config; the WASM
+    # build resolves its dependencies through vcpkg with the wasm32-emscripten
+    # triplet instead (see Meta/CMake/vcpkg/wasm32-emscripten.cmake).
+    include(check_for_dependencies)
+endif()
 include(ladybird_helper_processes)
 include(revision)
 

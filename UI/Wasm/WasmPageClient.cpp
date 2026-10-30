@@ -61,30 +61,9 @@ Web::DevicePixelRect WasmPageClient::screen_rect() const
     return { 0, 0, m_viewport_size.width(), m_viewport_size.height() };
 }
 
-void WasmPageClient::page_did_allocate_backing_stores(
-    i32 front_bitmap_id, Gfx::ShareableBitmap front_bitmap,
-    i32 back_bitmap_id, Gfx::ShareableBitmap back_bitmap)
-{
-    m_front_bitmap_id = front_bitmap_id;
-    m_back_bitmap_id  = back_bitmap_id;
-    m_front_bitmap    = front_bitmap.bitmap();
-    m_back_bitmap     = back_bitmap.bitmap();
-}
-
-void WasmPageClient::page_did_paint(Gfx::IntRect const&, i32 bitmap_id)
-{
-    // Swap front/back when the rendered bitmap_id matches our back buffer.
-    if (bitmap_id == m_back_bitmap_id) {
-        swap(m_front_bitmap, m_back_bitmap);
-        swap(m_front_bitmap_id, m_back_bitmap_id);
-    }
-
-    // Notify JavaScript that a new frame is ready to blit.
-    EM_ASM({
-        if (typeof window !== 'undefined' && window.ladybirdOnPaint) {
-            window.ladybirdOnPaint();
-        }
-    });
-}
+// NOTE: Frame presentation moved to the compositor architecture upstream
+// (LibWeb/Compositor + the Compositor service). Until the WASM build has an
+// in-process rasterizer wired to CompositorHost (see the sync MR notes), no
+// frames are produced here and the canvas stays blank.
 
 }

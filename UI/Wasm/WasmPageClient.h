@@ -31,7 +31,7 @@ public:
     RefPtr<Gfx::Bitmap> front_bitmap() const { return m_front_bitmap; }
 
     // ── Web::PageClient pure virtuals ────────────────────────────────────
-    virtual u64 id() const override { return 0; }
+    virtual Web::PageId id() const override { return 0; }
     virtual bool is_connection_open() const override { return true; }
     virtual Gfx::Palette palette() const override;
     virtual Web::DevicePixelRect screen_rect() const override;
@@ -43,14 +43,11 @@ public:
     virtual Web::CSS::PreferredMotion preferred_motion() const override { return Web::CSS::PreferredMotion::NoPreference; }
     virtual size_t screen_count() const override { return 1; }
     virtual Queue<Web::QueuedInputEvent>& input_event_queue() override { return m_input_event_queue; }
-    virtual void report_finished_handling_input_event(u64, Web::EventResult) override { }
+    virtual void report_finished_handling_input_event(Web::PageId, u64, Web::EventResult) override { }
     virtual void request_file(Web::FileRequest) override { }
-    virtual Web::DisplayListPlayerType display_list_player_type() const override { return Web::DisplayListPlayerType::SkiaCPU; }
     virtual bool is_headless() const override { return false; }
 
-    virtual void page_did_paint(Gfx::IntRect const&, i32 bitmap_id) override;
-    virtual void page_did_allocate_backing_stores(i32 front_bitmap_id, Gfx::ShareableBitmap front_bitmap,
-        i32 back_bitmap_id, Gfx::ShareableBitmap back_bitmap) override;
+    virtual void request_frame() override { }
 
 private:
     WasmPageClient(JS::VM&, Web::DevicePixelSize initial_size);

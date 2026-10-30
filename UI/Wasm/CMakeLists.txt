@@ -9,7 +9,6 @@ set(LADYBIRD_WASM_SOURCES
     WasmImageCodecPlugin.cpp
     WasmPageClient.cpp
     WasmWebView.cpp
-    SkiaStubs.cpp
 )
 
 add_executable(ladybird-wasm ${LADYBIRD_WASM_SOURCES})
@@ -25,24 +24,6 @@ target_include_directories(ladybird-wasm PRIVATE
     ${LADYBIRD_SOURCE_DIR}
     ${LADYBIRD_SOURCE_DIR}/Services
 )
-
-if(EMSCRIPTEN AND SKIA_PREBUILT_DIR)
-    # Get skia source root from the prebuilt dir (e.g., out/wasm-cpu -> skia root -> include/)
-    get_filename_component(_skia_out "${SKIA_PREBUILT_DIR}" DIRECTORY)
-    get_filename_component(_skia_root "${_skia_out}" DIRECTORY)
-    target_include_directories(ladybird-wasm PRIVATE "${_skia_root}" "${_skia_root}/include")
-
-    # The Skia prebuilt was compiled with emcc 3.1.44 whose WebAssemblyLowerEmscriptenEHSjLj
-    # pass generates calls to saveSetjmp/testSetjmp in the bitcode.  emcc 4.x no longer
-    # provides these symbols.  Provide them by linking the extracted emscripten_setjmp.o
-    # from the emcc 3.x compiler-rt (placed next to the Skia prebuilts).
-    # Only emscripten_setjmp.o is included — not the whole old libcompiler_rt — to avoid
-    # duplicate symbol errors for tempret/getTempRet0/setTempRet0 already in emcc 4.x.
-    set(_sjlj_obj "${SKIA_PREBUILT_DIR}/emscripten_setjmp.o")
-    if(EXISTS "${_sjlj_obj}")
-        target_link_libraries(ladybird-wasm PRIVATE "${_sjlj_obj}")
-    endif()
-endif()
 
 target_link_libraries(ladybird-wasm PRIVATE
     LibWeb

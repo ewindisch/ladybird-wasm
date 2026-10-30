@@ -109,15 +109,16 @@
       "description": "Build Ladybird as WebAssembly using Emscripten",
       "generator": "Ninja",
       "binaryDir": "$env{LADYBIRD_SOURCE_DIR}/Build/wasm",
-      "toolchainFile": "$env{LADYBIRD_SOURCE_DIR}/Meta/CMake/EmscriptenToolchain.cmake",
       "environment": {
-        "LADYBIRD_SOURCE_DIR": "${fileDir}/../../.."
+        "LADYBIRD_SOURCE_DIR": "${fileDir}/../../..",
+        "VCPKG_ROOT": "$env{LADYBIRD_SOURCE_DIR}/Build/vcpkg-wasm"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
         "VCPKG_OVERLAY_TRIPLETS": "$env{LADYBIRD_SOURCE_DIR}/Meta/CMake/vcpkg",
+        "VCPKG_CHAIN_LOAD_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
         "ENABLE_QT": "OFF"
       }
     }

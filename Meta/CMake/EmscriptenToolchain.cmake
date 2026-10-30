@@ -1,6 +1,11 @@
 # Emscripten Toolchain for Ladybird WASM Port
 # This toolchain file configures CMake to build Ladybird for WebAssembly using Emscripten
 
+# CMake has never shipped a Platform/Emscripten module; emsdk provides one.
+# Register it so try_compile()-based feature checks (e.g. LIBPNG_HAS_APNG) can
+# resolve the system and run their test projects.
+list(APPEND CMAKE_MODULE_PATH "$ENV{EMSDK}/upstream/emscripten/cmake/Modules")
+
 set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_PROCESSOR wasm)
 
