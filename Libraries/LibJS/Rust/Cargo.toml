@@ -19,7 +19,7 @@ thread-sanitizer = []
 [dependencies]
 ak = { path = "../../../AK/Rust" }
 foldhash = "0.2"
-getrandom = "0.4"
+getrandom = { version = "0.4", features = ["wasm_js"] }
 hashbrown = { version = "0.17.1", default-features = false }
 indexmap = "2"
 ladybird_allocator = { path = "../../RustAllocator", optional = true }

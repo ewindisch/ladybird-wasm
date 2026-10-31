@@ -34,6 +34,11 @@ endif()
 
 # Compiler flags shared by Rust libraries, binaries, and tests.
 set(RUSTC_TARGET_FLAGS -Dwarnings ${RUSTC_TARGET_CPU_FLAGS} ${RUSTC_TARGET_FRAME_POINTER_FLAGS})
+if (EMSCRIPTEN)
+    # getrandom 0.4 requires an explicit backend on wasm32-unknown-unknown; the
+    # wasm_js backend talks to the browser's CSPRNG through Emscripten's JS glue.
+    list(APPEND RUSTC_TARGET_FLAGS "--cfg=getrandom_backend=\\\"wasm_js\\\"")
+endif()
 list(JOIN RUSTC_TARGET_FLAGS " " RUSTC_TARGET_FLAGS)
 
 # import_rust_crate(MANIFEST_PATH path/to/Cargo.toml CRATE_NAME name [PANIC_UNWIND] [NO_DEFAULT_FEATURES]

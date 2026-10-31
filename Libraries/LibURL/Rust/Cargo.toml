@@ -9,7 +9,7 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 ak = { path = "../../../AK/Rust" }
 encoding_rs = "0.8.42"
-getrandom = "0.4"
+getrandom = { version = "0.4", features = ["wasm_js"] }
 ladybird_allocator = { path = "../../RustAllocator", optional = true }
 libregex_rust = { path = "../../LibRegex/Rust" }
 libunicode_rust = { path = "../../LibUnicode/Rust", features = ["idna"] }
